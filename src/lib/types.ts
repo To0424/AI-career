@@ -5,6 +5,9 @@ export interface User {
   user_type: 'high_school' | 'uni_postgrad';
   dse_scores?: { [subject: string]: string } | null;
   discipline?: string | null;
+  university?: string | null;
+  current_year?: string | null;
+  programme?: string | null;
   created_at: string;
   updated_at?: string;
 }

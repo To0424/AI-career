@@ -14,10 +14,23 @@ export const jobService = {
           job.title.toLowerCase().includes('junior') ||
           job.discipline === 'Education'
         );
-      } else if (userType === 'uni_postgrad' && discipline) {
-        jobs = jobs.filter(job => job.discipline === discipline);
+      } else if (userType === 'uni_postgrad') {
+        // For university students, show more inclusive results
+        if (discipline) {
+          // Show jobs matching discipline OR general professional roles
+          jobs = jobs.filter(job => 
+            job.discipline === discipline || 
+            job.discipline === 'Tech' || // Tech is always relevant
+            job.discipline === 'Business' || // Business is broadly applicable
+            !job.title.toLowerCase().includes('intern') // Exclude internships for uni students
+          );
+        } else {
+          // If no discipline specified, show all non-internship positions
+          jobs = jobs.filter(job => !job.title.toLowerCase().includes('intern'));
+        }
       }
 
+      console.log('Filtered jobs for', userType, 'with discipline', discipline, ':', jobs);
       return jobs;
     } catch (error) {
       console.error('Error getting jobs:', error);

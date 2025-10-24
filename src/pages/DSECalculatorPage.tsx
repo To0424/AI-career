@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, GraduationCap, Calculator } from 'lucide-react';
 import universityData from '../data/universities.json';
+import { storage } from '../lib/demoData';
+import type { User } from '../lib/types';
 
 interface DSEScores {
   [subject: string]: string;
@@ -78,6 +80,23 @@ export function DSECalculatorPage() {
     return coreComplete && elective1 && elective2 && dseScores[elective1] && dseScores[elective2];
   };
 
+  const saveUserProfile = () => {
+    const newUser: User = {
+      id: `demo-user-${Date.now()}`,
+      email: `demo-${Date.now()}@example.com`,
+      user_type: 'high_school',
+      dse_scores: dseScores,
+      discipline: 'General',
+      created_at: new Date().toISOString()
+    };
+
+    const users = storage.getUsers();
+    users.push(newUser);
+    storage.saveUsers(users);
+
+    navigate('/home');
+  };
+
   const calculateMatches = () => {
     if (!isFormComplete()) {
       alert('Please complete all DSE subject scores');
@@ -86,8 +105,8 @@ export function DSECalculatorPage() {
 
     const allMatches: ProgramMatch[] = [];
 
-    (universityData as University[]).forEach(uni => {
-      uni.programs.forEach(program => {
+    (universityData as any[]).forEach((uni: any) => {
+      uni.programs.forEach((program: any) => {
         let baseScore = 0;
         const missingRequirements: string[] = [];
 
@@ -106,7 +125,7 @@ export function DSECalculatorPage() {
           baseScore += score * weight;
         });
 
-        const hasRequiredElectives = program.electiveRequirements.some(req =>
+        const hasRequiredElectives = program.electiveRequirements.some((req: any) =>
           [elective1, elective2].includes(req)
         );
 
@@ -141,11 +160,11 @@ export function DSECalculatorPage() {
       <header className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span>Back to Home</span>
+            <span>Back</span>
           </button>
         </div>
       </header>
@@ -338,6 +357,19 @@ export function DSECalculatorPage() {
                     )}
                   </>
                 )}
+
+                {/* Continue to Main App Button */}
+                <div className="mt-8 pt-6 border-t border-gray-200 text-center">
+                  <p className="text-gray-600 mb-4">
+                    Ready to explore career opportunities and resources?
+                  </p>
+                  <button
+                    onClick={saveUserProfile}
+                    className="bg-blue-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                  >
+                    Continue to Main App
+                  </button>
+                </div>
               </div>
             )}
           </div>

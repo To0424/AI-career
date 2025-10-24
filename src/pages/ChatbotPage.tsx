@@ -68,11 +68,11 @@ export function ChatbotPage({ userId, userType }: ChatbotPageProps) {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate(-1)}
               className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span>Back to Home</span>
+              <span>Back</span>
             </button>
             <div className="text-sm text-gray-600">
               {remainingQueries > 0 ? `${remainingQueries} queries remaining` : 'Query limit reached'}

@@ -1,127 +1,144 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { supabase } from './lib/supabase';
-import { userService } from './services/userService';
-import { OnboardingModal } from './components/OnboardingModal';
-import { HomePage } from './pages/HomePage';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { storage } from './lib/demoData';
+import { LandingPage } from './pages/LandingPage';
+import { HighSchoolHomePage } from './pages/HighSchoolHomePage';
+import { UniversityHomePage } from './pages/UniversityHomePage';
+import { AvailablePositionsPage } from './pages/AvailablePositionsPage';
 import { JobDetailsPage } from './pages/JobDetailsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { DSECalculatorPage } from './pages/DSECalculatorPage';
 import { ChatbotPage } from './pages/ChatbotPage';
-import type { User, DSEScores } from './lib/types';
+import type { User } from './lib/types';
 
-function App() {
+function AppContent() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [authUser, setAuthUser] = useState<any>(null);
+  const location = useLocation();
 
   useEffect(() => {
     checkAuth();
   }, []);
 
-  const checkAuth = async () => {
-    try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+  // Re-check auth when location changes (to pick up newly created users)
+  useEffect(() => {
+    if (location.pathname === '/home') {
+      // Small delay to ensure storage operations are complete
+      setTimeout(() => {
+        checkAuth();
+      }, 150);
+    }
+  }, [location.pathname]);
 
-      if (!authUser) {
-        await signInAnonymously();
-      } else {
-        setAuthUser(authUser);
-        await loadUserProfile();
-      }
+  const checkAuth = () => {
+    try {
+      const users = storage.getUsers();
+      const currentUser = users.length > 0 ? users[0] : null; // Get the first (and should be only) user
+      console.log('All users:', users);
+      console.log('Selected user:', currentUser);
+      console.log('User type:', currentUser?.user_type);
+      setUser(currentUser);
     } catch (error) {
       console.error('Auth error:', error);
-      setIsLoading(false);
     }
-  };
-
-  const signInAnonymously = async () => {
-    try {
-      const { data, error } = await supabase.auth.signInAnonymously();
-
-      if (error) {
-        console.error('Auth error:', error);
-        setIsLoading(false);
-        return;
-      }
-
-      if (data.user) {
-        setAuthUser(data.user);
-        await loadUserProfile();
-      }
-    } catch (error) {
-      console.error('Sign in error:', error);
-      setIsLoading(false);
-    }
-  };
-
-  const loadUserProfile = async () => {
-    try {
-      const userProfile = await userService.getCurrentUser();
-
-      if (!userProfile) {
-        setShowOnboarding(true);
-      } else {
-        setUser(userProfile);
-      }
-    } catch (error) {
-      console.error('Load user error:', error);
-      setShowOnboarding(true);
-    }
-
+    
     setIsLoading(false);
-  };
-
-  const handleOnboardingComplete = async (
-    userType: 'high_school' | 'uni_postgrad',
-    dseScores?: DSEScores,
-    discipline?: string
-  ) => {
-    if (!authUser) return;
-
-    const newUser = await userService.createUser(
-      authUser.email || `user-${authUser.id}@example.com`,
-      userType,
-      dseScores,
-      discipline
-    );
-
-    if (newUser) {
-      setUser(newUser);
-      setShowOnboarding(false);
-    }
   };
 
   const handleUserUpdate = (updatedUser: User) => {
     setUser(updatedUser);
+    const users = storage.getUsers();
+    const index = users.findIndex((u: User) => u.id === updatedUser.id);
+    if (index !== -1) {
+      users[index] = updatedUser;
+      storage.saveUsers(users);
+    }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+  return (
+    <>
+      {isLoading ? (
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p className="mt-4 text-gray-600">Loading...</p>
+          </div>
         </div>
-      </div>
-    );
-  }
+      ) : (
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/dse-calculator" element={<DSECalculatorPage />} />
+          <Route 
+            path="/home" 
+            element={
+              user ? (
+                (() => {
+                  console.log('Routing user:', user);
+                  console.log('User type for routing:', user.user_type);
+                  if (user.user_type === 'high_school') {
+                    console.log('Routing to HighSchoolHomePage');
+                    return <HighSchoolHomePage user={user} />;
+                  } else {
+                    console.log('Routing to UniversityHomePage');
+                    return <UniversityHomePage user={user} />;
+                  }
+                })()
+              ) : (
+                <Navigate to="/" replace />
+              )
+            } 
+          />
+          <Route 
+            path="/available-positions" 
+            element={
+              user ? (
+                <AvailablePositionsPage user={user} />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            } 
+          />
+          <Route 
+            path="/job/:id" 
+            element={
+              user ? (
+                <JobDetailsPage user={user} />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            } 
+          />
+          <Route 
+            path="/dashboard" 
+            element={
+              user ? (
+                <DashboardPage user={user} onUserUpdate={handleUserUpdate} />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            } 
+          />
+          <Route 
+            path="/chatbot" 
+            element={
+              user ? (
+                <ChatbotPage userId={user.id} userType={user.user_type} />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            } 
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      )}
+    </>
+  );
+}
 
-  if (showOnboarding || !user) {
-    return <OnboardingModal onComplete={handleOnboardingComplete} />;
-  }
-
+function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<HomePage user={user} />} />
-        <Route path="/job/:id" element={<JobDetailsPage user={user} />} />
-        <Route path="/dashboard" element={<DashboardPage user={user} onUserUpdate={handleUserUpdate} />} />
-        <Route path="/dse-calculator" element={<DSECalculatorPage />} />
-        <Route path="/chatbot" element={<ChatbotPage userId={user.id} userType={user.user_type} />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <AppContent />
     </BrowserRouter>
   );
 }
