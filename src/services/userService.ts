@@ -1,15 +1,11 @@
-import { supabase } from '../lib/supabase';
 import { storage } from '../lib/demoData';
 import type { User } from '../lib/types';
 
 export const userService = {
   async getCurrentUser(): Promise<User | null> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-
       const users = storage.getUsers();
-      return users.find((u: User) => u.id === user.id) || null;
+      return users.length > 0 ? users[0] : null;
     } catch (error) {
       console.error('Error getting current user:', error);
       return null;
@@ -23,11 +19,8 @@ export const userService = {
     discipline?: string
   ): Promise<User | null> {
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) return null;
-
       const newUser: User = {
-        id: authUser.id,
+        id: `demo-user-${Date.now()}`,
         email,
         user_type: userType,
         dse_scores: dseScores || null,

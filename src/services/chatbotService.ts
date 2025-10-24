@@ -1,4 +1,5 @@
 import { storage } from '../lib/demoData';
+import { poeService } from './poeService';
 import type { ChatbotQuery } from '../lib/types';
 
 const getSimpleResponse = (userType: 'high_school' | 'uni_postgrad', query: string): string => {
@@ -45,7 +46,8 @@ export const chatbotService = {
       const queries = storage.getChatQueries();
       return queries
         .filter((q: ChatbotQuery) => q.user_id === userId)
-        .slice(0, limit);
+        .sort((a: ChatbotQuery, b: ChatbotQuery) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) // chronological order
+        .slice(-limit); // Get the last N queries (most recent ones)
     } catch (error) {
       console.error('Error getting user queries:', error);
       return [];
@@ -73,23 +75,31 @@ export const chatbotService = {
     }
   },
 
-  getResponse(userType: 'high_school' | 'uni_postgrad', query: string): string {
-    return getSimpleResponse(userType, query);
+  async getResponse(userType: 'high_school' | 'uni_postgrad', query: string): Promise<string> {
+    try {
+      // Use POE service to generate AI response
+      const response = await poeService.generateResponse(userType, query);
+      return response;
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      // Fallback to simple response if AI service fails
+      return getSimpleResponse(userType, query);
+    }
   },
 
   async submitQuery(userId: string, userType: 'high_school' | 'uni_postgrad', query: string): Promise<{ response: string; saved: boolean; limitReached: boolean }> {
     try {
       const queryCount = await this.getUserQueryCount(userId);
 
-      if (queryCount >= 3) {
+      if (queryCount >= 10) {
         return {
-          response: 'You have reached the maximum of 3 queries. Please refresh the page to start a new session.',
+          response: 'You have reached the maximum of 10 queries. Please refresh the page to start a new session.',
           saved: false,
           limitReached: true,
         };
       }
 
-      const response = this.getResponse(userType, query);
+      const response = await this.getResponse(userType, query);
       const saved = await this.saveQuery(userId, query, response);
 
       return {
@@ -99,7 +109,7 @@ export const chatbotService = {
       };
     } catch (error) {
       console.error('Error in submitQuery:', error);
-      const response = this.getResponse(userType, query);
+      const response = await this.getResponse(userType, query);
       return {
         response,
         saved: false,

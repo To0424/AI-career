@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MessageCircle, Send, X, Maximize2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { chatbotService } from '../services/chatbotService';
 import type { ChatbotQuery } from '../lib/types';
 
@@ -32,7 +36,7 @@ export function ChatbotWidget({ userId, userType }: ChatbotWidgetProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!query.trim() || isLoading || queryCount >= 3) return;
+    if (!query.trim() || isLoading || queryCount >= 10) return;
 
     setIsLoading(true);
 
@@ -109,7 +113,23 @@ export function ChatbotWidget({ userId, userType }: ChatbotWidgetProps) {
                   <p className="text-sm">{item.query}</p>
                 </div>
                 <div className="bg-gray-100 text-gray-900 rounded-lg p-3 mr-8">
-                  <p className="text-sm">{item.response}</p>
+                  <div className="text-sm prose prose-sm max-w-none">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkMath]}
+                      rehypePlugins={[rehypeKatex]}
+                      components={{
+                        p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+                        strong: ({ children }) => <strong className="font-semibold text-gray-900">{children}</strong>,
+                        em: ({ children }) => <em className="italic">{children}</em>,
+                        ul: ({ children }) => <ul className="list-disc list-inside ml-2 mb-1">{children}</ul>,
+                        ol: ({ children }) => <ol className="list-decimal list-inside ml-2 mb-1">{children}</ol>,
+                        li: ({ children }) => <li className="mb-0.5">{children}</li>,
+                        code: ({ children }) => <code className="bg-gray-200 px-1 py-0.5 rounded text-xs font-mono">{children}</code>
+                      }}
+                    >
+                      {item.response}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               </div>
             ))}

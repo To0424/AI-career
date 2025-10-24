@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Send, MessageCircle } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { chatbotService } from '../services/chatbotService';
 import type { ChatbotQuery } from '../lib/types';
 
@@ -9,12 +13,20 @@ interface ChatbotPageProps {
   userType: 'high_school' | 'uni_postgrad';
 }
 
+interface StreamingMessage {
+  id: string;
+  query: string;
+  response: string;
+  isStreaming: boolean;
+}
+
 export function ChatbotPage({ userId, userType }: ChatbotPageProps) {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [queries, setQueries] = useState<ChatbotQuery[]>([]);
   const [queryCount, setQueryCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [streamingMessage, setStreamingMessage] = useState<StreamingMessage | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -23,7 +35,7 @@ export function ChatbotPage({ userId, userType }: ChatbotPageProps) {
 
   useEffect(() => {
     scrollToBottom();
-  }, [queries]);
+  }, [queries, streamingMessage]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -37,30 +49,66 @@ export function ChatbotPage({ userId, userType }: ChatbotPageProps) {
     setQueries(allQueries);
   };
 
+  const simulateStreaming = (text: string, callback: (partial: string) => void) => {
+    let index = 0;
+    const interval = setInterval(() => {
+      if (index < text.length) {
+        callback(text.substring(0, index + 1));
+        index++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 20); // Adjust speed here (lower = faster)
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!query.trim() || isLoading || queryCount >= 3) return;
+    if (!query.trim() || isLoading || queryCount >= 10) return;
 
+    const currentQuery = query.trim();
+    setQuery('');
     setIsLoading(true);
 
-    const result = await chatbotService.submitQuery(userId, userType, query);
+    // Add user message immediately
+    const tempId = `temp-${Date.now()}`;
+    setStreamingMessage({
+      id: tempId,
+      query: currentQuery,
+      response: '',
+      isStreaming: true
+    });
+
+    const result = await chatbotService.submitQuery(userId, userType, currentQuery);
 
     if (result.limitReached) {
       alert(result.response);
       setIsLoading(false);
+      setStreamingMessage(null);
       return;
     }
 
-    if (result.saved) {
-      await loadQueries();
-      setQuery('');
-    }
+    // Simulate streaming response
+    simulateStreaming(result.response, (partialResponse) => {
+      setStreamingMessage({
+        id: tempId,
+        query: currentQuery,
+        response: partialResponse,
+        isStreaming: partialResponse.length < result.response.length
+      });
+    });
 
-    setIsLoading(false);
+    // After streaming is complete, add to queries and clear streaming
+    setTimeout(() => {
+      if (result.saved) {
+        loadQueries();
+      }
+      setStreamingMessage(null);
+      setIsLoading(false);
+    }, result.response.length * 20 + 100); // Wait for streaming to complete
   };
 
-  const remainingQueries = 3 - queryCount;
+  const remainingQueries = 10 - queryCount;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -98,7 +146,7 @@ export function ChatbotPage({ userId, userType }: ChatbotPageProps) {
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {queries.length === 0 && (
+            {queries.length === 0 && !streamingMessage && (
               <div className="text-center py-16">
                 <MessageCircle className="w-20 h-20 mx-auto mb-4 text-gray-300" />
                 <h3 className="text-lg font-semibold text-gray-700 mb-2">Start a conversation</h3>
@@ -128,7 +176,8 @@ export function ChatbotPage({ userId, userType }: ChatbotPageProps) {
               </div>
             )}
 
-            {queries.slice().reverse().map((item) => (
+            {/* Existing saved queries - show in chronological order (oldest first) */}
+            {queries.map((item) => (
               <div key={item.id} className="space-y-3">
                 <div className="flex justify-end">
                   <div className="bg-blue-600 text-white rounded-lg px-4 py-3 max-w-[80%]">
@@ -137,11 +186,64 @@ export function ChatbotPage({ userId, userType }: ChatbotPageProps) {
                 </div>
                 <div className="flex justify-start">
                   <div className="bg-gray-100 text-gray-900 rounded-lg px-4 py-3 max-w-[80%]">
-                    <p className="text-sm whitespace-pre-wrap">{item.response}</p>
+                    <div className="text-sm prose prose-sm max-w-none">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
+                        components={{
+                          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                          strong: ({ children }) => <strong className="font-semibold text-gray-900">{children}</strong>,
+                          em: ({ children }) => <em className="italic">{children}</em>,
+                          ul: ({ children }) => <ul className="list-disc list-inside ml-2 mb-2">{children}</ul>,
+                          ol: ({ children }) => <ol className="list-decimal list-inside ml-2 mb-2">{children}</ol>,
+                          li: ({ children }) => <li className="mb-1">{children}</li>,
+                          code: ({ children }) => <code className="bg-gray-200 px-1 py-0.5 rounded text-xs font-mono">{children}</code>,
+                          pre: ({ children }) => <pre className="bg-gray-200 p-2 rounded text-xs overflow-x-auto">{children}</pre>
+                        }}
+                      >
+                        {item.response}
+                      </ReactMarkdown>
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
+
+            {/* Streaming message */}
+            {streamingMessage && (
+              <div className="space-y-3">
+                <div className="flex justify-end">
+                  <div className="bg-blue-600 text-white rounded-lg px-4 py-3 max-w-[80%]">
+                    <p className="text-sm">{streamingMessage.query}</p>
+                  </div>
+                </div>
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 text-gray-900 rounded-lg px-4 py-3 max-w-[80%]">
+                    <div className="text-sm prose prose-sm max-w-none">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
+                        components={{
+                          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                          strong: ({ children }) => <strong className="font-semibold text-gray-900">{children}</strong>,
+                          em: ({ children }) => <em className="italic">{children}</em>,
+                          ul: ({ children }) => <ul className="list-disc list-inside ml-2 mb-2">{children}</ul>,
+                          ol: ({ children }) => <ol className="list-decimal list-inside ml-2 mb-2">{children}</ol>,
+                          li: ({ children }) => <li className="mb-1">{children}</li>,
+                          code: ({ children }) => <code className="bg-gray-200 px-1 py-0.5 rounded text-xs font-mono">{children}</code>,
+                          pre: ({ children }) => <pre className="bg-gray-200 p-2 rounded text-xs overflow-x-auto">{children}</pre>
+                        }}
+                      >
+                        {streamingMessage.response}
+                      </ReactMarkdown>
+                      {streamingMessage.isStreaming && (
+                        <span className="inline-block w-2 h-4 bg-gray-400 ml-1 animate-pulse" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
 

@@ -6,9 +6,10 @@ A modern React-based career planning application powered by AXIOM.AI that helps 
 
 - 🎯 **Smart Job Matching**: Browse and filter job opportunities tailored to your profile
 - 📊 **Career Analytics**: View company insights and industry statistics
-- 🤖 **AI Assistant**: Get personalized career guidance through our chatbot
+- 🤖 **AI Assistant**: Get personalized career guidance through our OpenRouter-powered chatbot
 - 📱 **Responsive Design**: Works seamlessly on desktop and mobile devices
 - 🎓 **Educational Background Support**: Tailored for both high school and university graduates
+- 🧠 **Intelligent Responses**: Role-specific AI responses using OpenRouter LLM models
 
 ## Tech Stack
 
@@ -16,6 +17,7 @@ A modern React-based career planning application powered by AXIOM.AI that helps 
 - **Styling**: Tailwind CSS
 - **Build Tool**: Vite
 - **Routing**: React Router
+- **AI Integration**: OpenRouter API with GPT-4o Mini
 - **Data**: Demo data with localStorage persistence
 
 ## Getting Started
@@ -37,6 +39,40 @@ npm run dev
 ```
 
 4. Open your browser and navigate to `http://localhost:5174`
+
+## OpenRouter AI Integration
+
+The chatbot uses OpenRouter to provide intelligent, role-specific responses:
+
+### Configuration
+
+1. **Get an OpenRouter API key**:
+   - Sign up at [OpenRouter.ai](https://openrouter.ai)
+   - Generate an API key from your dashboard
+
+2. **Set up environment variables**:
+   ```bash
+   # Create .env.local file in the project root
+   VITE_OPENROUTER_API_KEY=your_actual_api_key_here
+   ```
+
+3. **Fallback Mode**:
+   - If no API key is configured, the chatbot will use smart fallback responses
+   - Perfect for development and testing without API costs
+
+### Features
+
+- **Role-specific prompts**: Different system prompts for high school vs university students
+- **Hong Kong context**: Tailored advice for Hong Kong's education and job market
+- **Smart fallbacks**: Graceful degradation when API is unavailable
+- **Cost-effective**: Uses GPT-4o Mini model for optimal performance/cost ratio
+
+### Customization
+
+You can customize the AI behavior by modifying:
+- `src/services/openRouterService.ts` - System prompts and model configuration
+- Model selection (currently using `openai/gpt-4o-mini`)
+- Response parameters (temperature, max tokens, etc.)
 
 ## Available Scripts
 
