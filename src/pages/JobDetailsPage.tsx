@@ -52,7 +52,7 @@ export function JobDetailsPage({ user }: JobDetailsPageProps) {
   };
 
   const handleApply = async () => {
-    if (!job) return;
+    if (!job || !job.url) return;
 
     window.open(job.url, '_blank');
 
@@ -68,7 +68,7 @@ export function JobDetailsPage({ user }: JobDetailsPageProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           <p className="mt-4 text-gray-600">Loading job details...</p>
@@ -79,7 +79,7 @@ export function JobDetailsPage({ user }: JobDetailsPageProps) {
 
   if (!job) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-600 mb-4">Job not found</p>
           <button
@@ -96,8 +96,8 @@ export function JobDetailsPage({ user }: JobDetailsPageProps) {
   const isScam = (job.scam_score || 0) > 0.5;
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="bg-gray-50 border-b border-gray-300">
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <button
             onClick={() => navigate('/')}

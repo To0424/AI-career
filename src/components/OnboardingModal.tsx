@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import type { DSEScores } from '../lib/types';
 
@@ -32,6 +33,7 @@ const DSE_ELECTIVE_SUBJECTS = [
 const DISCIPLINES = ['Tech', 'Business', 'Arts', 'Science', 'General'];
 
 export function OnboardingModal({ onComplete }: OnboardingModalProps) {
+  const navigate = useNavigate();
   const [step, setStep] = useState<'type' | 'profile'>('type');
   const [userType, setUserType] = useState<'high_school' | 'uni_postgrad' | null>(null);
   const [dseScores, setDseScores] = useState<DSEScores>({});
@@ -41,7 +43,12 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
 
   const handleTypeSelect = (type: 'high_school' | 'uni_postgrad') => {
     setUserType(type);
-    setStep('profile');
+    if (type === 'high_school') {
+      onComplete(type);
+      navigate('/dse-calculator');
+    } else {
+      setStep('profile');
+    }
   };
 
   const handleDseScoreChange = (subject: string, grade: string) => {

@@ -6,6 +6,8 @@ import { OnboardingModal } from './components/OnboardingModal';
 import { HomePage } from './pages/HomePage';
 import { JobDetailsPage } from './pages/JobDetailsPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { DSECalculatorPage } from './pages/DSECalculatorPage';
+import { ChatbotPage } from './pages/ChatbotPage';
 import type { User, DSEScores } from './lib/types';
 
 function App() {
@@ -116,6 +118,8 @@ function App() {
         <Route path="/" element={<HomePage user={user} />} />
         <Route path="/job/:id" element={<JobDetailsPage user={user} />} />
         <Route path="/dashboard" element={<DashboardPage user={user} onUserUpdate={handleUserUpdate} />} />
+        <Route path="/dse-calculator" element={<DSECalculatorPage />} />
+        <Route path="/chatbot" element={<ChatbotPage userId={user.id} userType={user.user_type} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
