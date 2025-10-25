@@ -70,7 +70,14 @@ export function ChatbotPage({ userId, userType }: ChatbotPageProps) {
     setQuery('');
     setIsLoading(true);
 
-    // Add user message immediately
+    // Check query limit first
+    if (queryCount >= 10) {
+      alert('You have reached the maximum of 10 queries. Please refresh the page to start a new session.');
+      setIsLoading(false);
+      return;
+    }
+
+    // Show streaming message immediately
     const tempId = `temp-${Date.now()}`;
     setStreamingMessage({
       id: tempId,
@@ -79,33 +86,36 @@ export function ChatbotPage({ userId, userType }: ChatbotPageProps) {
       isStreaming: true
     });
 
-    const result = await chatbotService.submitQuery(userId, userType, currentQuery);
-
-    if (result.limitReached) {
-      alert(result.response);
-      setIsLoading(false);
-      setStreamingMessage(null);
-      return;
-    }
-
-    // Simulate streaming response
-    simulateStreaming(result.response, (partialResponse) => {
-      setStreamingMessage({
-        id: tempId,
-        query: currentQuery,
-        response: partialResponse,
-        isStreaming: partialResponse.length < result.response.length
+    try {
+      // Get AI response but don't save yet
+      const response = await chatbotService.getResponse(userType, currentQuery);
+      
+      // Simulate streaming response
+      simulateStreaming(response, (partialResponse) => {
+        setStreamingMessage({
+          id: tempId,
+          query: currentQuery,
+          response: partialResponse,
+          isStreaming: partialResponse.length < response.length
+        });
       });
-    });
 
-    // After streaming is complete, add to queries and clear streaming
-    setTimeout(() => {
-      if (result.saved) {
-        loadQueries();
-      }
-      setStreamingMessage(null);
+      // After streaming completes, save the query and reload
+      setTimeout(async () => {
+        // Save the query to storage
+        await chatbotService.saveQuery(userId, currentQuery, response);
+        
+        // Clear streaming and reload queries
+        setStreamingMessage(null);
+        setIsLoading(false);
+        await loadQueries(); // This will get the saved conversation
+      }, response.length * 20 + 200);
+      
+    } catch (error) {
+      console.error('Error in handleSubmit:', error);
       setIsLoading(false);
-    }, result.response.length * 20 + 100); // Wait for streaming to complete
+      setStreamingMessage(null);
+    }
   };
 
   const remainingQueries = 10 - queryCount;
